@@ -192,7 +192,7 @@ def parse_user_ids(value: str | None) -> list[str]:
 
 def parse_whitelist_command(text: str) -> tuple[str, list[str]] | None:
     parts = text.strip().split()
-    if len(parts) < 2 or parts[0].lower() != "/whitelist":
+    if len(parts) < 2 or parts[0].lower() not in {"/whitelist", "whitelist"}:
         return None
     return parts[1].lower(), parts[2:]
 

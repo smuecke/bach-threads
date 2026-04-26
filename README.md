@@ -24,6 +24,13 @@ Subscribe the app to these bot events:
 - `reaction_added`
 - `message.im`
 
+If you want to use `/whitelist ...` as a real Slack slash command, also go to
+**Slash Commands** and create:
+
+- Command: `/whitelist`
+- Request URL: leave blank for Socket Mode apps, or use `/slack/events` for HTTP
+- Short description: `Manage BachThreads whitelist`
+
 The app can run either with Socket Mode or with a public Events API request URL:
 
 - Socket Mode: enable Socket Mode and create an app-level token with
@@ -56,6 +63,14 @@ Whitelist changes can be made by Slack admins/owners or by users who are already
 on the whitelist.
 
 Send the bot a DM with:
+
+```text
+whitelist list
+whitelist add @ada U1234567890
+whitelist remove @ada
+```
+
+If you configured the Slack slash command, you can also use:
 
 ```text
 /whitelist list

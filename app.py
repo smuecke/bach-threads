@@ -79,6 +79,17 @@ def handle_message_events(event, say, logger):
         say(text=result.text)
 
 
+@app.command("/whitelist")
+def handle_whitelist_command(ack, body, respond, logger):
+    ack()
+    command_text = f"/whitelist {body.get('text') or ''}".strip()
+    logger.info("Received /whitelist command from user=%s", body.get("user_id"))
+    result = whitelist.handle_dm_text(body.get("user_id"), command_text)
+    if result:
+        logger.info("slash whitelist command result: %s", result.ok)
+        respond(text=result.text, response_type="ephemeral")
+
+
 if __name__ == "__main__":
     log_startup_state()
     app_token = os.environ.get("SLACK_APP_TOKEN")

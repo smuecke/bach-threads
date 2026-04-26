@@ -146,6 +146,7 @@ def test_parse_whitelist_command():
         "add",
         ["@ada", "U123"],
     )
+    assert parse_whitelist_command("whitelist list") == ("list", [])
     assert parse_whitelist_command("hello") is None
 
 

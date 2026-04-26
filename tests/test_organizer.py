@@ -71,7 +71,8 @@ def test_reminder_text_links_to_thread_and_help_page():
 
     assert "https://example.test/thread" in text
     assert "https://slack.test/help" in text
-    assert "reply function" in text
+    assert "Antwort-Funktion" in text
+    assert "Keine Sorge" in text
 
 
 def test_handle_reaction_added_moves_saved_messages_and_cleans_up():

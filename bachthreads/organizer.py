@@ -185,13 +185,19 @@ def format_thread_reply(message: SavedMessage) -> str:
 
 
 def reminder_text(parent_link: str | None, help_url: str) -> str:
-    parent = f" I moved your message into the thread here: {parent_link}" if parent_link else ""
+    parent = (
+        f"Ich habe Ihre Nachricht hier in die passende Unterhaltung verschoben: {parent_link}\n\n"
+        if parent_link
+        else ""
+    )
     return (
-        "Hi! Tiny thread housekeeping note:"
-        f"{parent}\n\n"
-        "When a conversation already has a thread, please use Slack's reply function "
-        "instead of posting a fresh channel message. It keeps the channel easier to scan "
-        f"and the context stays together. Slack's guide is here: {help_url}"
+        "Guten Tag! Nur ein kleiner freundlicher Hinweis zu Slack:\n\n"
+        f"{parent}"
+        "Wenn es zu einem Thema schon eine Unterhaltung gibt, nutzen Sie bitte die "
+        "Antwort-Funktion statt einer neuen Nachricht im Kanal. So bleibt alles "
+        "beisammen und der Kanal ist für alle leichter zu überblicken.\n\n"
+        "Keine Sorge, das passiert schnell. Eine kurze Anleitung von Slack finden "
+        f"Sie hier: {help_url}"
     )
 
 

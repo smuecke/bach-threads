@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bachthreads"
+version = "0.1.0"
+description = "Slack app for moving saved channel messages into threads."
+requires-python = ">=3.11"
+dependencies = [
+    "python-dotenv>=1.0.1",
+    "slack-bolt>=1.21.2",
+    "slack-sdk>=3.33.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.3.3"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

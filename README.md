@@ -1,0 +1,75 @@
+# BachThreads
+
+BachThreads is a small Slack app for collecting stray channel messages and reposting
+them under the thread where they belong.
+
+## Workflow
+
+1. Save every stray channel message that should become a thread reply.
+2. Add the `:thread:` reaction to the top-level message.
+3. The app posts your saved messages as replies, removes the `:thread:` reaction,
+   clears those saved messages, and privately reminds the original authors to use
+   Slack replies next time.
+
+## Slack App Setup
+
+Create a Slack app with these scopes:
+
+- Bot token scopes: `chat:write`, `reactions:read`, `reactions:write`, `im:write`,
+  `users:read`
+- User token scopes: `stars:read`, `stars:write`
+
+Subscribe the app to these bot events:
+
+- `reaction_added`
+- `message.im`
+
+The app can run either with Socket Mode or with a public Events API request URL:
+
+- Socket Mode: enable Socket Mode and create an app-level token with
+  `connections:write`.
+- HTTP: set your Events API request URL to `/slack/events` on the host running
+  this app.
+
+## Configuration
+
+Copy `.env.example` to `.env` and fill in real tokens.
+
+```bash
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_USER_TOKEN=xoxp-...
+SLACK_SIGNING_SECRET=...
+SLACK_APP_TOKEN=xapp-...
+INITIAL_WHITELIST_USER_IDS=U1234567890,U2345678901
+WHITELIST_FILE=data/whitelist.json
+THREAD_EMOJI=thread
+```
+
+`SLACK_APP_TOKEN` is only needed for Socket Mode. `INITIAL_WHITELIST_USER_IDS` is
+an optional bootstrap list so you have at least one non-admin user who can manage
+the bot.
+
+## Whitelist
+
+Only whitelisted users can trigger BachThreads with the `:thread:` reaction.
+Whitelist changes can be made by Slack admins/owners or by users who are already
+on the whitelist.
+
+Send the bot a DM with:
+
+```text
+/whitelist list
+/whitelist add @ada U1234567890
+/whitelist remove @ada
+```
+
+Users can be written as Slack mentions, raw Slack user IDs, or exact Slack names.
+
+## Run
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```

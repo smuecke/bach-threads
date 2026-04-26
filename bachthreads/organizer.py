@@ -56,16 +56,23 @@ class ThreadOrganizer:
 
     def handle_reaction_added(self, event: dict[str, Any]) -> dict[str, Any]:
         if not self._is_thread_reaction(event):
+            LOGGER.info(
+                "Ignoring reaction %s; expected %s",
+                event.get("reaction"),
+                self.settings.thread_emoji,
+            )
             return {"status": "ignored", "reason": "different_reaction"}
 
         user_id = event.get("user")
         if self.whitelist and not self.whitelist.trigger_allowed(user_id):
+            LOGGER.info("Ignoring thread reaction from non-whitelisted user %s", user_id)
             return {"status": "ignored", "reason": "not_whitelisted"}
 
         item = event.get("item") or {}
         channel = item.get("channel")
         parent_ts = item.get("ts")
         if item.get("type") != "message" or not channel or not parent_ts:
+            LOGGER.info("Ignoring unsupported reaction item: %s", item)
             return {"status": "ignored", "reason": "unsupported_item"}
 
         saved_messages = [
@@ -74,6 +81,7 @@ class ThreadOrganizer:
             if not (message.channel == channel and message.ts == parent_ts)
         ]
         if not saved_messages:
+            LOGGER.info("No saved messages found to move under %s/%s", channel, parent_ts)
             self.remove_trigger_reaction(channel, parent_ts)
             return {"status": "done", "posted": 0, "reminded": 0}
 

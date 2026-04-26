@@ -36,14 +36,40 @@ organizer = ThreadOrganizer(
 )
 
 
+def log_startup_state() -> None:
+    try:
+        auth = app.client.auth_test()
+        LOGGER.info(
+            "Connected to Slack workspace=%s bot_user_id=%s",
+            auth.get("team"),
+            auth.get("user_id"),
+        )
+    except Exception:
+        LOGGER.exception("Slack auth_test failed. Check SLACK_BOT_TOKEN and scopes.")
+
+    LOGGER.info("Whitelist contains %s user(s)", len(whitelist.store.list()))
+
+
 @app.event("reaction_added")
 def handle_reaction_added(event, logger):
+    logger.info(
+        "Received reaction_added reaction=%s user=%s item=%s",
+        event.get("reaction"),
+        event.get("user"),
+        event.get("item"),
+    )
     result = organizer.handle_reaction_added(event)
     logger.info("reaction_added result: %s", result)
 
 
 @app.event("message")
 def handle_message_events(event, say, logger):
+    logger.info(
+        "Received message event channel_type=%s user=%s subtype=%s",
+        event.get("channel_type"),
+        event.get("user"),
+        event.get("subtype"),
+    )
     if event.get("channel_type") != "im" or event.get("subtype"):
         return
 
@@ -54,6 +80,7 @@ def handle_message_events(event, say, logger):
 
 
 if __name__ == "__main__":
+    log_startup_state()
     app_token = os.environ.get("SLACK_APP_TOKEN")
     if app_token:
         LOGGER.info("Starting BachThreads in Socket Mode")

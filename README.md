@@ -5,19 +5,22 @@ them under the thread where they belong.
 
 ## Workflow
 
-1. Save every stray channel message that should become a thread reply.
-2. Add the `:thread:` reaction to the top-level message.
-3. The app posts your saved messages as replies, removes the `:thread:` reaction,
-   clears those saved messages, and privately reminds the original authors to use
-   Slack replies next time.
+1. Mark every stray channel message with `:bookmark:`.
+2. Add the `:thread:` reaction to the real top-level message.
+3. The app posts the marked messages and any replies below them into the real
+   thread in chronological order, removes the `:thread:` reaction, and privately
+   reminds the original authors to use Slack replies next time.
+
+Slack's current Later/Saved Posts feature is not available through Slack's API,
+so BachThreads uses emoji markers instead.
 
 ## Slack App Setup
 
 Create a Slack app with these scopes:
 
 - Bot token scopes: `chat:write`, `reactions:read`, `reactions:write`, `im:write`,
-  `users:read`
-- User token scopes: `stars:read`, `stars:write`
+  `users:read`, `channels:history`, `groups:history`
+- User token scopes: `reactions:write`
 
 Subscribe the app to these bot events:
 
@@ -49,7 +52,9 @@ SLACK_SIGNING_SECRET=...
 SLACK_APP_TOKEN=xapp-...
 INITIAL_WHITELIST_USER_IDS=U1234567890,U2345678901
 WHITELIST_FILE=data/whitelist.json
+QUEUE_FILE=data/message_queue.json
 THREAD_EMOJI=thread
+MESSAGE_EMOJI=bookmark
 ```
 
 `SLACK_APP_TOKEN` is only needed for Socket Mode. `INITIAL_WHITELIST_USER_IDS` is

@@ -8,6 +8,7 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
 
+from bachthreads.message_queue import MessageQueueStore
 from bachthreads.organizer import Settings, ThreadOrganizer
 from bachthreads.whitelist import WhitelistManager, WhitelistStore, parse_user_ids
 
@@ -33,6 +34,9 @@ organizer = ThreadOrganizer(
     user_client=WebClient(token=user_token),
     settings=Settings.from_env(),
     whitelist=whitelist,
+    queue_store=MessageQueueStore(
+        os.environ.get("QUEUE_FILE", "data/message_queue.json")
+    ),
 )
 
 

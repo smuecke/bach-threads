@@ -7,6 +7,7 @@ from bachthreads.organizer import (
     saved_item_to_message,
     unique_author_ids,
 )
+from bachthreads.message_queue import MessageQueueStore
 from bachthreads.whitelist import WhitelistManager, WhitelistStore, parse_whitelist_command
 
 
@@ -75,35 +76,21 @@ def test_reminder_text_links_to_thread_and_help_page():
     assert "Keine Sorge" in text
 
 
-def test_handle_reaction_added_moves_saved_messages_and_cleans_up():
-    saved_items = [
-        {
-            "type": "message",
-            "channel": "C1",
-            "message": {"ts": "111.111", "user": "U1", "text": "belongs here"},
-            "url": "https://example.test/original",
-        },
-        {
-            "type": "message",
-            "channel": "C1",
-            "message": {"ts": "999.999", "user": "U2", "text": "parent"},
-        },
-    ]
+def test_handle_reaction_added_without_marked_messages_cleans_up_trigger_reaction():
     bot = FakeClient(
-        {
-            "conversations_open": {"channel": {"id": "D1"}},
-            "chat_getPermalink": {"permalink": "https://example.test/thread"},
-        }
+        {"chat_getPermalink": {"permalink": "https://example.test/thread"}}
     )
-    user = FakeClient({"stars_list": {"items": saved_items}})
+    user = FakeClient()
     organizer = ThreadOrganizer(
         bot,
         user,
         Settings(
             thread_emoji="thread",
+            message_emoji="bookmark",
             reminder_help_url="https://slack.test/help",
         ),
         WhitelistManager(bot, WhitelistStore(":memory:", ["UORGANIZER"])),
+        MessageQueueStore(":memory:"),
     )
 
     result = organizer.handle_reaction_added(
@@ -115,9 +102,7 @@ def test_handle_reaction_added_moves_saved_messages_and_cleans_up():
         }
     )
 
-    assert result == {"status": "done", "posted": 1, "reminded": 1}
-    assert ("chat_postMessage", {"channel": "C1", "thread_ts": "999.999", "text": "<@U1> wrote:\n>belongs here\nOriginal: https://example.test/original", "unfurl_links": False, "unfurl_media": False}) in bot.calls
-    assert ("stars_remove", {"channel": "C1", "timestamp": "111.111"}) in user.calls
+    assert result == {"status": "done", "posted": 0, "reminded": 0}
     assert ("reactions_remove", {"channel": "C1", "timestamp": "999.999", "name": "thread"}) in user.calls
 
 
@@ -125,7 +110,7 @@ def test_handle_reaction_added_ignores_users_outside_whitelist():
     organizer = ThreadOrganizer(
         FakeClient(),
         FakeClient(),
-        Settings("thread", "https://slack.test/help"),
+        Settings("thread", "bookmark", "https://slack.test/help"),
         WhitelistManager(FakeClient(), WhitelistStore(":memory:", ["UORGANIZER"])),
     )
 
@@ -139,6 +124,103 @@ def test_handle_reaction_added_ignores_users_outside_whitelist():
     )
 
     assert result == {"status": "ignored", "reason": "not_whitelisted"}
+
+
+def test_message_marker_reaction_queues_message_for_trigger_user():
+    store = MessageQueueStore(":memory:")
+    organizer = ThreadOrganizer(
+        FakeClient(),
+        FakeClient(),
+        Settings("thread", "bookmark", "https://slack.test/help"),
+        WhitelistManager(FakeClient(), WhitelistStore(":memory:", ["UORGANIZER"])),
+        store,
+    )
+
+    result = organizer.handle_reaction_added(
+        {
+            "type": "reaction_added",
+            "user": "UORGANIZER",
+            "reaction": "bookmark",
+            "item": {"type": "message", "channel": "C1", "ts": "111.111"},
+        }
+    )
+
+    assert result == {"status": "queued", "queued": 1}
+    assert store.pop("UORGANIZER")[0].ts == "111.111"
+
+
+def test_thread_trigger_moves_marked_messages_and_their_replies_in_order():
+    store = MessageQueueStore(":memory:")
+    store.add("UORGANIZER", "C1", "300.000")
+    store.add("UORGANIZER", "C1", "100.000")
+
+    def conversations_history(**kwargs):
+        messages = {
+            "100.000": {"ts": "100.000", "user": "U1", "text": "stray one"},
+            "300.000": {"ts": "300.000", "user": "U3", "text": "stray two"},
+        }
+        return {"messages": [messages[kwargs["latest"]]]}
+
+    def conversations_replies(**kwargs):
+        if kwargs["ts"] == "100.000":
+            return {
+                "messages": [
+                    {"ts": "100.000", "user": "U1", "text": "stray one"},
+                    {
+                        "ts": "200.000",
+                        "user": "U2",
+                        "text": "reply to stray one",
+                        "thread_ts": "100.000",
+                    },
+                ]
+            }
+        return {
+            "messages": [
+                {"ts": "300.000", "user": "U3", "text": "stray two"},
+            ]
+        }
+
+    def chat_get_permalink(**kwargs):
+        return {"permalink": f"https://example.test/{kwargs['message_ts']}"}
+
+    bot = FakeClient(
+        {
+            "conversations_history": conversations_history,
+            "conversations_replies": conversations_replies,
+            "chat_getPermalink": chat_get_permalink,
+            "conversations_open": {"channel": {"id": "D1"}},
+        }
+    )
+    user = FakeClient()
+    organizer = ThreadOrganizer(
+        bot,
+        user,
+        Settings("thread", "bookmark", "https://slack.test/help"),
+        WhitelistManager(bot, WhitelistStore(":memory:", ["UORGANIZER"])),
+        store,
+    )
+
+    result = organizer.handle_reaction_added(
+        {
+            "type": "reaction_added",
+            "user": "UORGANIZER",
+            "reaction": "thread",
+            "item": {"type": "message", "channel": "C1", "ts": "999.999"},
+        }
+    )
+
+    posted = [
+        kwargs["text"]
+        for name, kwargs in bot.calls
+        if name == "chat_postMessage" and kwargs["channel"] == "C1"
+    ]
+    assert result == {"status": "done", "posted": 3, "reminded": 3}
+    assert posted == [
+        "<@U1> wrote:\n>stray one\nOriginal: https://example.test/100.000",
+        "<@U2> wrote:\n>reply to stray one\nOriginal: https://example.test/200.000",
+        "<@U3> wrote:\n>stray two\nOriginal: https://example.test/300.000",
+    ]
+    assert not [call for call in user.calls if call[0] == "stars_remove"]
 
 
 def test_parse_whitelist_command():

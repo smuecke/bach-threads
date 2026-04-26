@@ -149,11 +149,21 @@ class ThreadOrganizer:
             self.user_client.stars_remove(channel=message.channel, timestamp=message.ts)
 
     def remove_trigger_reaction(self, channel: str, parent_ts: str) -> None:
-        self.bot_client.reactions_remove(
-            channel=channel,
-            timestamp=parent_ts,
-            name=self.settings.thread_emoji,
-        )
+        try:
+            self.user_client.reactions_remove(
+                channel=channel,
+                timestamp=parent_ts,
+                name=self.settings.thread_emoji,
+            )
+        except Exception as error:
+            response = getattr(error, "response", {}) or {}
+            slack_error = response.get("error")
+            if slack_error == "no_reaction":
+                LOGGER.info(
+                    "Trigger reaction was already absent on %s/%s", channel, parent_ts
+                )
+                return
+            raise
 
     def _is_thread_reaction(self, event: dict[str, Any]) -> bool:
         return event.get("reaction") == self.settings.thread_emoji

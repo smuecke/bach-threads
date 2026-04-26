@@ -118,7 +118,7 @@ def test_handle_reaction_added_moves_saved_messages_and_cleans_up():
     assert result == {"status": "done", "posted": 1, "reminded": 1}
     assert ("chat_postMessage", {"channel": "C1", "thread_ts": "999.999", "text": "<@U1> wrote:\n>belongs here\nOriginal: https://example.test/original", "unfurl_links": False, "unfurl_media": False}) in bot.calls
     assert ("stars_remove", {"channel": "C1", "timestamp": "111.111"}) in user.calls
-    assert ("reactions_remove", {"channel": "C1", "timestamp": "999.999", "name": "thread"}) in bot.calls
+    assert ("reactions_remove", {"channel": "C1", "timestamp": "999.999", "name": "thread"}) in user.calls
 
 
 def test_handle_reaction_added_ignores_users_outside_whitelist():
